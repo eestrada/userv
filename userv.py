@@ -18,6 +18,33 @@ import tempfile
 import resource
 
 
+class SIGHUPFileHandler(logging.FileHandler):
+
+    """Make it easier to work with SIGHUP signals by reopening log file.
+
+    Also, the `reopen` method takes any number of arguments, but doesn't use
+    them, so that it can be passed directly to `signal.signal` as a handler
+    without requiring a wrapper function.
+
+    Inspired by WatchedFileHandler:
+        https://github.com/python/cpython/blob/3.6/Lib/logging/handlers.py#L416
+    """
+    def reopen(self, *args):
+        """Flush, close, and reopen log file.
+
+        Uses internal lock to avoid race conditions in multithreaded daemons.
+        """
+        self.acquire()
+        try:
+            self.stream.flush()
+            self.stream.close()
+            # See Issue #21742 (https://bugs.python.org/issue21742): _open() might fail.
+            self.stream = None
+            self.stream = self._open()
+        finally:
+            self.release()
+
+
 class ServiceContext(object):
 
     """Sets up and tears down a daemon service as a context manager.
