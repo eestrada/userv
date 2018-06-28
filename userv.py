@@ -427,4 +427,5 @@ class ServiceContext(object):
         to run it in the foreground.
         """
         self.log.info('Running main code.')
+        raise NotImplementedError
 
