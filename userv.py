@@ -78,6 +78,12 @@ class ServiceContext(object):
         self.auto_run = False
         try:
             self.start()
+        except:
+            raise
+        else:
+            # NOTE: `stop` will be called automatically in the `__exit__` call
+            # of the `with` clause.
+            atexit.unregister(self.stop)
         finally:
             self.auto_run = _auto_run
         return self
@@ -140,7 +146,7 @@ class ServiceContext(object):
         ``False``.
         """
         stdin_fd = sys.__stdin__.fileno()
-        if self.is_socket(stdin_fd):
+        if cls.is_socket(stdin_fd):
             return True
         else:
             return False
@@ -169,15 +175,11 @@ class ServiceContext(object):
         now seems to be a dead link. We should replace it with one that
         actually works.
         """
-        if self.detach_process is None:
-            # NOTE: `None` value indicates "Let the Unix Service class
-            # determine if we need to detach."
-
-            if self.is_process_started_by_init() or self.is_process_started_by_superserver():
-                self.log.info("Process started by init or inetd. No need to detach.")
-                return
-        elif not self.detach_process:
+        if not self.detach_process:
             self.log.info("Service set to not detach.")
+            return
+        elif self.is_process_started_by_init() or self.is_process_started_by_superserver():
+            self.log.info("Process started by init or inetd. No need to detach.")
             return
 
         # fork, decouple from parent environment, fork again
@@ -193,8 +195,8 @@ class ServiceContext(object):
         """
         if self.chroot_directory is not None:
             os.chroot(self.chroot_directory)
-        os.setuid(self.uid)
         os.setgid(self.gid)
+        os.setuid(self.uid)
         os.chdir(self.working_directory)
         os.umask(self.umask)
 
@@ -216,7 +218,7 @@ class ServiceContext(object):
 
         # close open file descriptors
         maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
-        maxfd = maxfd if maxfd != resource.RLIM_INFINITY else 1024
+        maxfd = maxfd if maxfd != resource.RLIM_INFINITY else 2048
 
         to_ignore = [self.stdin, self.stdout, self.stderr]
         to_ignore.extend(self.files_preserve or [])
