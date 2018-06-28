@@ -88,7 +88,7 @@ class ServiceContext(object):
 
     @classmethod
     def is_process_started_by_init(cls):
-        """ Determine whether the current process is started by `init`.
+        """Determine whether the current process is started by `init`.
 
         :return: ``True`` if the parent process is `init`; otherwise
             ``False``.
@@ -103,7 +103,7 @@ class ServiceContext(object):
 
     @classmethod
     def is_socket(cls, fd):
-        """ Determine whether the file descriptor is a socket.
+        """Determine whether the file descriptor is a socket.
 
         :param fd: The file descriptor to interrogate.
         :return: ``True`` iff the file descriptor is a socket; otherwise
@@ -386,7 +386,8 @@ class ServiceContext(object):
     def stop(self):
         """Stop and clean up daemon.
 
-        Normally run at exit using the `atexit` library.
+        Normally run at exit using the `atexit` library, or is run as part of
+        the `__exit__` method from a `with` context.
         """
         if self.is_open or self.status()[0]:
             self.is_open = False
@@ -401,12 +402,7 @@ class ServiceContext(object):
             message = 'pidfile "%s" does not exist. Daemon likely not running?'
             self.log.warning(message, self.pidfile)
             return False  # NOTE: not an error in a restart
-
         return self.stop_self() if pid == os.getpid() else self.stop_other(pid)
-        if pid == os.getpid():
-            return self.stop_self()
-        else:
-            return self.stop_other(pid)
 
     def restart(self):
         """Convenience method to stop and then immediatly start the daemon."""
